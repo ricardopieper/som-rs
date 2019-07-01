@@ -1,0 +1,11 @@
+[package]
+name = "som-rs"
+version = "0.1.0"
+authors = ["Ricardo Pieper <ricardopieper@live.com>"]
+edition = "2018"
+
+[dependencies]
+rand = "0.7"
+rayon = "1.1.0"
+piston_window = "*"
+image = "0.21.2"

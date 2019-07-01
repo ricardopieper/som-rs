@@ -1,7 +1,7 @@
 use rand::prelude::*;
 use std::cmp::Ordering;
 use rayon::prelude::*;
-const LEARNING_RATE: f64 = 0.1;
+const LEARNING_RATE: f64 = 0.5;
 
 struct Node {
     weights: Vec<f64>,
@@ -106,7 +106,7 @@ impl SelfOrganizingMap {
         let learning_rate = LEARNING_RATE * (-iteration / total_iterations).exp();
        
         let randomly_chosen : &[f64] = 
-            data[rand::thread_rng().gen_range(0, data.len()+1)].as_ref();
+            data[rand::thread_rng().gen_range(0, data.len())].as_ref();
 
         let (bmu_x, bmu_y) = self.find_best_match_position(randomly_chosen);
 
@@ -149,8 +149,8 @@ fn get_color(color: i32) -> Vec<f64> {
 
     let mut rng = rand::thread_rng();
     //let variation : f64 = rng.gen_range(-127.0, 127.0);
-/*
-    let mut chosen_color = match color {
+
+    /*let mut chosen_color = match color {
         0 => vec![127.0,  0.0,  0.0],
         1 => vec![0.0,  127.0,  0.0],
         2 => vec![0.0,  0.0,  127.0],
@@ -159,8 +159,8 @@ fn get_color(color: i32) -> Vec<f64> {
         5 => vec![0.0,  127.0, 127.0],
         _ => vec![0.0,  0.0, 0.0],
     };
-
-    for c in chosen_color.iter_mut() {
+*/
+    /*for c in chosen_color.iter_mut() {
         if *c < 0.1 {
             *c += variation.abs()
         } else {
@@ -175,7 +175,7 @@ fn get_color(color: i32) -> Vec<f64> {
 
 
 use piston_window::*;
-
+use sdl2_window::Sdl2Window;
 fn initialize_window(width: u32, height: u32) -> PistonWindow {
 
     let window: PistonWindow = WindowSettings::new("Self Organizing Map", [width, height])
@@ -188,7 +188,6 @@ fn initialize_window(width: u32, height: u32) -> PistonWindow {
 
 extern crate image as im;
 use im::ImageBuffer;
-
 fn main() {
 
     let data_size = 1000000;
@@ -229,32 +228,49 @@ fn main() {
     som.train(&data, |nodes: &[Node], epoch: u32| {
 
         if epoch % 50 == 0 {
-
+         //   std::thread::sleep(std::time::Duration::from_millis(1));
             println!("Training epoch {:?}", epoch);
+            let mut rendered = false;
 
-            if let Some(event) = window.next() {
+            for node in nodes {        
+                let as_rgb = normalize(node.get_weights().to_vec(), 1.0 / 255.0);
 
-                for node in nodes {        
-                    let as_rgb = normalize(node.get_weights().to_vec(), 1.0 / 255.0);
+                canvas.put_pixel(node.x as u32, node.y as u32, im::Rgba([
+                    as_rgb[0] as u8,
+                    as_rgb[1] as u8,
+                    as_rgb[2] as u8,
+                    255
+                ]));
+            }
 
-                    canvas.put_pixel(node.x as u32, node.y as u32, im::Rgba([
-                        as_rgb[0] as u8,
-                        as_rgb[1] as u8,
-                        as_rgb[2] as u8,
-                        255
-                    ]));
+            texture.update(&mut texture_context, &canvas).unwrap();
+
+            while !rendered {
+                let mut event = window.next();
+
+                while event.is_none() {
+                    println!("Trying to get window event....");
+                    event = window.next();
                 }
-
-                texture.update(&mut texture_context, &canvas).unwrap();
-
-                window.draw_2d(&event, |ctx, gl, device| {
+                println!("Rendering...");
+               
+                let result = window.draw_2d(&event.unwrap(), |ctx, gl, device| {
                     texture_context.encoder.flush(device);
                     clear([1.0; 4], gl);
                     image(&texture, ctx.transform, gl);
                 });
-            }
-        }
+                
+                println!("result = {:?}", result);
 
+                if result.is_none() {
+                    rendered = false;
+                } else {
+                    rendered = true;
+                }
+
+
+            }   
+        }
 
     });
 }
